@@ -7,8 +7,9 @@ Mars 2021
 """
 import pandas as pd
 import io
+import csv
 
-def read_d(path):
+def read_d_pandas(path):
     """
     params: path of the instance of interest
 
@@ -22,6 +23,35 @@ def read_d(path):
                      #usecols=[1,2,5])
                      #names=['x_loc', 'y_loc', 'demand'])#, engine='python')
     return data
+
+def read_d_pandas_2(path):
+    """
+
+    :param path:
+    :return:
+    """
+    data = pd.read_csv(path, sep='\s{2,}', header=None, engine='python', thousands=',')
+    return data
+
+def read_d(path):
+    """
+
+    :param path:
+    :return:
+    """
+    x_loc = []
+    y_loc = []
+    Demand = []
+
+    #with open(path) as data:
+    #data.read()
+    data = open(path, "r")
+    for line in data:
+        x, y, t_1, t_2, d, s_t = line.split("\t")
+        x_loc.append(x)
+        y_loc.append(y)
+        Demand.append(d)
+    return Demand
 
 def cost_matrix_1(data):
     """
