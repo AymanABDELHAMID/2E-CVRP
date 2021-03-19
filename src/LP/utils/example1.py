@@ -7,12 +7,12 @@ Mars 2021
 
 example 1 : testing reading instances
 """
+from src.LP.utils import data_reader as dt
 
-from ...src.LP.utils import data_reader as dr
+path = "../../../instances/LV-SAV-instances/3-15/Ca1-3,15.txt"  # remember the path should be relative to the data reader
+# d = dr.read_d(path)
+d = dt.read_d_pandas_2(path)
+print(d)
 
-def main():
-    path = "../../instances/LV-SAV-instances/3-15/Ca1-3,15.txt"
-    dr.read_d(path).head()
-
-if __name__ == '__main__':
-    main()
+d1 = dt.read_d_pandas(path)
+print(d1)

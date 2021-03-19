@@ -17,11 +17,13 @@ def read_d_pandas(path):
     """
     #data = open(path, "r")
     data = pd.read_csv(path,
-                     delimiter = '\t',#or sep='\t',#, #delim_whitespace=True,  # or sep="\s+" #separator is whitespace
-                     header=None) #,  # no header
-                     #lineterminator='\r\n') #,
-                     #usecols=[1,2,5])
-                     #names=['x_loc', 'y_loc', 'demand'])#, engine='python')
+                     sep='\s{2,}', #delimiter = '\t',#or sep='\t',#, #delim_whitespace=True,  # or sep="\s+" #separator is whitespace
+                     header=None, #,  # no header
+                     lineterminator='\r\n',
+                     usecols=[0,1,4],
+                     names=['x_loc', 'y_loc', 'demand'],
+                     engine='python',
+                     thousands=',')
     return data
 
 def read_d_pandas_2(path):
@@ -81,3 +83,35 @@ def compute_distance(loc1, loc2):
     output:
         euclidean distance between the two vertices
     """
+
+def read_clients(df):
+    """
+    reads the instance with the data, return the clietns data only
+    :param dataframe:
+    :return: a list of clients with their locations, demand
+    """
+    #clients = df.loc[]
+    clients = df.loc[df.demand.notna()]
+    return clients
+
+def read_depot(df):
+    """
+    reads the instance with the data, return the clietns data only
+    :param dataframe:
+    :return: a list of clients with their locations, demand
+    """
+    #clients = df.loc[]
+    depot = df.loc[df.demand.isna(), ["x_loc", "y_loc"]]
+    return depot.values
+    #TODO: only returns the last element
+
+def read_hubs(df):
+    """
+    reads the instance with the data, return the clietns data only
+    :param dataframe:
+    :return: a list of clients with their locations, demand
+    """
+    #clients = df.loc[]
+    hubs = df.loc[df.demand.isna(),["x_loc","y_loc"]]
+    return hubs.values
+    #TODO: return all elements except for last element

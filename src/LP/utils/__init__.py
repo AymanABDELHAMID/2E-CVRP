@@ -8,9 +8,6 @@ import pandas as pd
 import csv
 import io
 
-
-# print('⚡️Reading the problem instances... ')
-
 class data(object):
     """
     A class to hold the instance data.
