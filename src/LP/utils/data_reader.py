@@ -125,7 +125,7 @@ def cost_matrix_2(hubs, clients):
     for i, client_loc in enumerate(clients):
         for j, hub_loc in enumerate(hubs):
             cost_matrix_2[i, j] = compute_distance(client_loc, hub_loc)
-            cost_matrix_2[j, i] = cost_matrix_1[i, j]
+            cost_matrix_2[j, i] = cost_matrix_2[i, j]
     return cost_matrix_2
 
 def cost_matrix_3(clients):
@@ -134,7 +134,7 @@ def cost_matrix_3(clients):
     cost matrix between clients (it is symmetrical)
 
     :param clients:
-    :return:
+    :return: a dict that takes number of client 1 and number of client 2 as keys to give you the distance between both,
     """
     cost_matrix_3 = {(d, h): 0 for d in range(len(clients)) for h in range(len(clients))}
     for i, client_loc1 in enumerate(clients):
