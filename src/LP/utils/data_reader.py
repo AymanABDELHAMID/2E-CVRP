@@ -55,25 +55,6 @@ def read_d(path):
         Demand.append(d)
     return Demand
 
-def cost_matrix_1(data):
-    """
-    cost matrix between satellite hubs and customers
-    params: path of the instance of interest
-
-    output:
-    """
-    pass
-
-
-def cost_matrix_2(data):
-    """
-    cost matrix between satellite hubs and depot station
-    params: path of the instance of interest
-
-    output:
-    """
-    pass
-
 def compute_distance(loc1, loc2):
     """
     params:
@@ -115,3 +96,50 @@ def read_hubs(df):
     hubs = df.loc[df.demand.isna(),["x_loc","y_loc"]]
     return hubs.values
     #TODO: return all elements except for last element
+
+def cost_matrix_1(depot, hubs):
+    """
+    Reads location data of depot and hubs.
+    creates cost matrix between satellite hubs and customers
+    :param depot:
+    :param hubs:
+    :return:
+    """
+    cost_matrix_1 = {(d, h): 0 for d in range(len(depot)) for h in range(len(hubs))}
+    for i, depot_loc in enumerate(depot):
+        for j, hub_loc in enumerate(hubs):
+            cost_matrix_1[i,j] = compute_distance(depot_loc, hub_loc)
+            cost_matrix_1[j, i] = cost_matrix_1[i,j]
+    return cost_matrix_1
+
+def cost_matrix_2(hubs, clients):
+    """
+    Reads location data of clients and hubs.
+    cost matrix between satellite hubs and clients
+
+    :param hubs:
+    :param clients:
+    :return:
+    """
+    cost_matrix_2 = {(d, h): 0 for d in range(len(clients)) for h in range(len(hubs))}
+    for i, client_loc in enumerate(clients):
+        for j, hub_loc in enumerate(hubs):
+            cost_matrix_2[i, j] = compute_distance(client_loc, hub_loc)
+            cost_matrix_2[j, i] = cost_matrix_1[i, j]
+    return cost_matrix_2
+
+def cost_matrix_3(clients):
+    """
+    Reads location data of clients and hubs.
+    cost matrix between clients (it is symmetrical)
+
+    :param clients:
+    :return:
+    """
+    cost_matrix_3 = {(d, h): 0 for d in range(len(clients)) for h in range(len(clients))}
+    for i, client_loc1 in enumerate(clients):
+        for j, client_loc2 in enumerate(clients):
+            if i < j:
+                cost_matrix_3[i, j] = compute_distance(client_loc1, client_loc2)
+                cost_matrix_3[j, i] = cost_matrix_3[i, j]
+    return cost_matrix_3
