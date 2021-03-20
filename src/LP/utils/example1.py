@@ -10,9 +10,6 @@ example 1 : testing reading instances
 from src.LP.utils import data_reader as dt
 
 path = "../../../instances/LV-SAV-instances/3-15/Ca1-3,15.txt"  # remember the path should be relative to the data reader
-# d = dr.read_d(path)
-d = dt.read_d_pandas_2(path)
-print(d)
-
 d1 = dt.read_d_pandas(path)
+# this is the instance in a dataframe format - with the data we need: location, demand
 print(d1)
