@@ -38,6 +38,7 @@ def create_model_1(vans, depot, hubs, clients,
     R_max = len(clients)
     R = list(range(R_max)) # list of robots
     C = [c.name for c in clients] # list of clients
+    D_c = [c.demand for c in clients] # list of demands
     L = list(set([l[0] for l in cost_matrix_2.keys()])) # L = m+n
     H = list(range(len(hubs))) # list of hubs (hubs 0,1,2)
     R_cap = 50 # maximum robot capacity
@@ -66,8 +67,10 @@ def create_model_1(vans, depot, hubs, clients,
     # van-hub assignment
     # TODO: compare with the TSP formulation
     # create a list of Depots + Hubs
-    DH = [0]+H # in our case it is only one depot, the model is extendable to include multiple
+    # DH = [0]+H # in our case it is only one depot, the model is extendable to include multiple (if we..)
+    DH = list(range(len(hubs)+1))
     # TODO: remember in the distance matrix hubs are 1,2,3
+    # y = model.addVars(V, DH, DH, vtype=GRB.BINARY, name="y")
     y = model.addVars(V, DH, DH, vtype=GRB.BINARY, name="y")
     # edges assignment to robots
     z = model.addVars(L, L, R, vtype=GRB.BINARY, name="z")
@@ -75,7 +78,32 @@ def create_model_1(vans, depot, hubs, clients,
     #####################################################
     # 3. constraints
     #####################################################
+    # (2) - all client nodes are assigned to hubs
 
+    # (4) - if robot serves a client, the corresponding hub must be open
+
+    # (8) - all the trucks must return to the depot station
+
+    # (9) - all trucks must depart from the depart station
+
+    # (10) - number of trucks leaving = number of trucks returning
+
+    # (11) - sum of all trucks going to the same hub is 1 if hub is open
+
+    # (A) - distance covered by every robot should be less than maximum allowed distance
+
+    # forming a tour :
+        # (B1) - ensure that the robot assigned to a client travels to another location after every client
+
+        # (B2) - same but from j --> i
+
+    # (C) - respect maximum robot capacity
+
+    # (D) - each client is served by a single robot from a single hub
+
+    # (E) - same as (D) but summing over all clients and all hubs
+
+    
     #### Optimize!
 
     # solution_printer.print_solution_x(x)

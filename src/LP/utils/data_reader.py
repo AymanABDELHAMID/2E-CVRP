@@ -170,6 +170,7 @@ def cost_matrix_multiple_depot(depots, hubs):
 
 def cost_matrix_1_single_depot(depots, hubs):
     """
+    This is just the distance from depot to hubs
     Reads location data of depot and hubs.
     creates cost matrix between satellite hubs and customers
     :param depots_hubs: use read_dep_hubs to get the necessary input from the instance dataframe
@@ -181,6 +182,7 @@ def cost_matrix_1_single_depot(depots, hubs):
         for j, loc2 in enumerate(hubs):
             cost_matrix_1[i,j] = compute_distance(loc1, loc2)
     return cost_matrix_1
+
 
 def cost_matrix_1(depots_hubs):
     """
