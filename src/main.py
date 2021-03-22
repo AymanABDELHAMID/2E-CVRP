@@ -36,7 +36,13 @@ c_matrix_2 = dt.cost_matrix_4(client_loc, hub_list)
 
 
 # 6. run the model
-md.create_model_1(depot = depot_list,
+#md.create_model_1(depot = depot_list,
+#                        hubs = hub_list,
+#                        clients = client_obj,
+#                        cost_matrix_1= c_matrix_1,
+#                        cost_matrix_2= c_matrix_2)
+
+md.create_model_2(depot = depot_list,
                         hubs = hub_list,
                         clients = client_obj,
                         cost_matrix_1= c_matrix_1,
