@@ -7,7 +7,7 @@ Minimize
    + 47.16990566028301 y[3,1] + 205.7304061144099 y[3,2] + 0 y[3,3]
    + 205.2437575177379 y[3,4] + 158.113883008419 y[4,1]
    + 106.3014581273465 y[4,2] + 205.2437575177379 y[4,3] + 0 y[4,4]
-   + 50 Constant
+   + 0 u[0] + 50 Constant
 Subject To
  trucks3[1]: - y[1,2] - y[1,3] - y[1,4] + y[2,1] + y[3,1] + y[4,1] = 0
  trucks3[2]: y[1,2] - y[2,1] - y[2,3] - y[2,4] + y[3,2] + y[4,2] = 0
@@ -17,7 +17,7 @@ Subject To
  if_truck_then_hub[2]: - o[1] + y[1,2] + y[3,2] + y[4,2] = 0
  if_truck_then_hub[3]: - o[2] + y[1,3] + y[2,3] + y[4,3] = 0
  if_truck_then_hub[4]: - o[3] + y[1,4] + y[2,4] + y[3,4] = 0
- start_from_depot: u[0] = 1
+ start_from_depot: u[1] = 1
  lowest_hub_order[1]: u[1] >= 2
  lowest_hub_order[2]: u[2] >= 2
  lowest_hub_order[3]: u[3] >= 2

@@ -703,7 +703,7 @@ def create_model_4(depot, hubs, clients,
                       == o[h2-1] for h2 in DH[1:]), name="if_truck_then_hub")
 
     # (12) - setting the starting point from main Depot
-    model.addConstr((u[0] == 1), name="start_from_depot")
+    model.addConstr((u[0] == 1), name="start_from_depot") # when changed to 1 the model is infeasible
 
     # (13) - order of satellites should be between 2 and p+1
     model.addConstrs((u[h] >= 2 for h in DH[1:]), name="lowest_hub_order")
