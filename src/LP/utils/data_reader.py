@@ -24,13 +24,18 @@ class data(object):
         self.type = type
 
 class Client():
-    def __init__(self, name, loc_x, loc_y, demand):
+    def __init__(self, name, loc_x, loc_y, demand, time_1, time_2, service_time):
         self.name = name
         self.loc = [loc_x, loc_y]
         self.demand = demand
+        self.tw1 = time_1
+        self.tw2 = time_2
+        self.st = service_time
 
     def __str__(self):
-        return f"Client: {self.name}.\n  Location: {self.loc}.\n  Demand: {self.demand} units."
+        return f"Client: {self.name}.\n  Location: {self.loc}.\n  Demand: {self.demand} units. \n" \
+               f"This client must be served between the times: ({self.tw1},{self.tw2}) .\n " \
+               f"The duration of the service: {self.st}"
 # TODO: add configurations and params here
 
 
@@ -45,8 +50,8 @@ def read_d_pandas(path):
                      sep='\s{2,}', #delimiter = '\t',#or sep='\t',#, #delim_whitespace=True,  # or sep="\s+" #separator is whitespace
                      header=None, #,  # no header
                      lineterminator='\r\n',
-                     usecols=[0,1,4],
-                     names=['x_loc', 'y_loc', 'demand'],
+                     #usecols=[0,1,4],
+                     names=['x_loc', 'y_loc', 't1', 't2','demand', 'service_t'],
                      engine='python',
                      thousands=',')
     return data
@@ -110,7 +115,7 @@ def read_clients_loc_only(df):
     """
     #clients = df.loc[]
     clients_temp = df.loc[df.demand.notna()]
-    clients = clients_temp.drop(['demand'], axis=1)
+    clients = clients_temp.drop(['demand', 'service_t', 't1', 't2'], axis=1)
     return clients.values
 
 def create_client_obj(client_list):
@@ -121,7 +126,13 @@ def create_client_obj(client_list):
     """
     clients = []
     for i, data in enumerate(client_list): # advantage, you can add names to customers
-            client_temp = Client(name = str(i), loc_x= data[0], loc_y=data[1], demand=data[2])
+            client_temp = Client(name = str(i),
+                                 loc_x= data[0],
+                                 loc_y=data[1],
+                                 time_1= data[2],
+                                 time_2= data[3],
+                                 demand=data[4],
+                                 service_time=data[5])
             clients.append(client_temp)
     return clients
 
@@ -133,7 +144,7 @@ def read_depot(df):
     """
     #clients = df.loc[]
     depot = df.loc[df.demand.isna(), ["x_loc", "y_loc"]]
-    return depot.values[-1]
+    return [depot.values[-1]]
 
 def read_hubs(df):
     """

@@ -2,7 +2,10 @@
 Ayman Mahmoud - Mars 2021
 Group 2 - Hub based model
 """
-from src.LP.solver import model as md
+#from src.LP.solver import model as md
+
+from src.LP.solver import model_2 as md
+#from src.LP.solver import model_3 as md
 from src.LP.utils import data_reader as dt
 
 # remember the path should be relative to the data reader
@@ -42,10 +45,18 @@ c_matrix_2 = dt.cost_matrix_4(client_loc, hub_list)
 #                        cost_matrix_1= c_matrix_1,
 #                        cost_matrix_2= c_matrix_2)
 
-md.create_model_4(depot = depot_list,
-                        hubs = hub_list,
-                        clients = client_obj,
-                        cost_matrix_1= c_matrix_1,
-                        cost_matrix_2= c_matrix_2)
+#md.create_model_4(depot = depot_list,
+#                        hubs = hub_list,
+#                        clients = client_obj,
+#                        cost_matrix_1= c_matrix_1,
+#                        cost_matrix_2= c_matrix_2)
+
+md.create_model_RAP(hubs=hub_list,
+                    clients=client_obj,
+                    cost_matrix_2=c_matrix_2)
+
+#md.create_model(hubs=hub_list,
+#                    clients=client_obj,
+#                    cost_matrix_2=c_matrix_2)
 
 # 7. analyze results

@@ -88,7 +88,7 @@ def create_model_1(depot, hubs, clients,
     # implemented in constraint (D)
     # (4) - if robot serves a client, the corresponding hub must be open
     model.addConstrs((gp.quicksum(x[c, r, h] for r in R) <= o[h] for c in C for h in H),
-                     name="no_hub_no_robot")
+                     name="no_hub_no_robot") # usually needed
     # (8) - all the trucks must return to the depot station
     model.addConstrs((gp.quicksum(y[v, dh, len(H)] for dh in DH[:-1] if dh != len(H)) == t for v in V), name="trucks1")
     # (9) - all trucks must depart from the depart station
@@ -138,8 +138,8 @@ def create_model_1(depot, hubs, clients,
                      name="robot_cap")
     # (D) - each client is served by a single robot from a single hub
     model.addConstrs((gp.quicksum(x[c, r, h] for h in H for r in R) == 1 for c in C), name="Just_one_hub")
-    # (E) - same as (D) but summing over all clients and all hubs
-    model.addConstrs((x.sum(c, '*', h) <= 1 for c in C for h in H), name="Just_one_robot")
+    # (E) - same as (D) but summing over all clients and all hubs (I think wrong)
+    # model.addConstrs((x.sum(c, '*', h) <= 1 for c in C for h in H), name="Just_one_robot")
 
     # (R) - decision variable r constraints - needs revision
     #model.addConstrs(robot[r] == gp.quicksum(z[int(c1), int(c2), r] for c1 in C for c2 in C if c1 != c2) for r in R)
@@ -797,8 +797,3 @@ def create_model_4(depot, hubs, clients,
     #               name="truck_cap")
 
     #########################################################""
-
-def create_model_5(depot, hubs, clients,
-                       cost_matrix_1, cost_matrix_2):
-    # completely different
-    pass
