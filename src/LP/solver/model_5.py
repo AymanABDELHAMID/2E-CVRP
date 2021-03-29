@@ -46,7 +46,7 @@ def create_model(hubs, clients, cost_matrix_1, cost_matrix_2):
     #####################################################
     # a. define maximum number of robots:
     n_c = len(clients)  # number of customers
-    R_max = len(clients) #TODO: The number of solutions (for Instance 1 - robots needed: 5)
+    R_max = 5 #len(clients) #TODO: The number of solutions
     R = list(range(R_max))  # list of robots
     C = [c.name for c in clients]  # list of clients
     D_c = [c.demand for c in clients]  # list of demands
@@ -219,10 +219,6 @@ def create_model(hubs, clients, cost_matrix_1, cost_matrix_2):
     #### Optimize!
     model.optimize()
 
-    #####################################################
-    # 6. analyzing solutions
-    #####################################################
-
     print('Optimal solution found with total cost: %g' % model.objVal)
 
     for v in model.getVars():
@@ -231,15 +227,6 @@ def create_model(hubs, clients, cost_matrix_1, cost_matrix_2):
 
     ### Printing execution Time:
     print("Executed in %s Minutes" % ((time.time() - start_time)/60))
-
-    # Robots:
-    #print("Analyzing Solutions...")
-    #print("1. Robots:")
-    #for r in R:
-    #    for h in H:
-    #        for c in C:
-    #            if x[c, r, h].x > 0.5:
-    #                print("Robot ", r + 1, " will serve client ", c + 1, " from Hub ", h + 1)
 
 def create_model_TRP(depot, hubs, cost_matrix_1):
     """
