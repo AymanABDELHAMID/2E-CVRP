@@ -119,9 +119,15 @@ def create_model(hubs, clients, cost_matrix_1, cost_matrix_2):
 
     # Ensuring Tours in "y" are respecting the same hub the robot is serving from
     model.addConstrs((gp.quicksum(y[int(c), n_c + h, r] for c in C) == rob[r, h] for r in R for h in H),
-                 name="sameHub1")
+                 name="sameHub1_y")
     model.addConstrs((gp.quicksum(y[n_c + h, int(c), r] for c in C) == rob[r, h] for r in R for h in H),
-     name="sameHub2")
+     name="sameHub2_y")
+
+    # Ensuring robot assignment in "x" are respecting the same hub the robot is serving from
+    model.addConstrs((gp.quicksum(x[c, r, h] for c in C) <= (n_c+1)*(rob[r, h]) for r in R for h in H),
+                     name="sameHub1_x")
+    model.addConstrs((gp.quicksum(x[c, r, h] for c in C) <= (n_c+1)*(rob[r, h]) for r in R for h in H),
+                     name="sameHub2_x")
 
     # Temporal constraints for client locations (here we assume distance and time have 2:1 ratio)
     #M = {(i, j): op_time + st[i] + (cost_matrix_2[int(i), int(j)]/2) for i in C for j in C}
@@ -157,17 +163,22 @@ def create_model(hubs, clients, cost_matrix_1, cost_matrix_2):
     DH = list(range(len(hubs) + 1)) # List of Depot and Hubs
     z = model.addVars(V, DH, DH, vtype=GRB.BINARY, name="z")
 
+    # Truck hub assignment
+    w = model.addVars(V, H, vtype=GRB.BINARY, name="w")
+
+
     # (8) - all the trucks must return to the depot station
-    # model.addConstr((gp.quicksum(y[h, 0] for h in DH) == 1), name="trucks1")
+    # model.addConstr((gp.quicksum(z[v, , h2] for h in DH) == 1), name="trucks1")
     # (9) - all trucks must depart from the depart station
-    # model.addConstr((gp.quicksum(y[0, h] for h in DH) == 1), name="trucks2")
+    # model.addConstr((gp.quicksum(z[v, h1, h2] for h in DH) == 1), name="trucks2")
+    # (11) - sum of all trucks going to the same hub is 1 if hub is open
+    model.addConstrs((gp.quicksum(z[v, h1, h2] for v in V for h1 in DH if h1 != h2)
+                      == o[h2] for h2 in DH[:-1]), name="if_truck_then_hub")
     # (10) - mirroring Constraint 11
     model.addConstrs((gp.quicksum(z[v, h1, h2] for v in V for h1 in DH if h1 != h2)
                       == gp.quicksum(z[v, h2, h1] for v in V for h1 in DH if h1 != h2)
                       for h2 in DH), name="trucks3")
-    # (11) - sum of all trucks going to the same hub is 1 if hub is open
-    model.addConstrs((gp.quicksum(z[v, h1, h2] for v in V for h1 in DH if h1 != h2)
-                      == o[h2] for h2 in DH[:-1]), name="if_truck_then_hub")
+
     # Eliminating Subtours
 
     model.addConstrs((gp.quicksum(z[v, dh1, dh2] for v in V for dh1 in DH if dh1 != dh2)
@@ -233,13 +244,100 @@ def create_model(hubs, clients, cost_matrix_1, cost_matrix_2):
     print("Executed in %s Minutes" % ((time.time() - start_time)/60))
 
     # Robots:
-    #print("Analyzing Solutions...")
-    #print("1. Robots:")
-    #for r in R:
-    #    for h in H:
-    #        for c in C:
-    #            if x[c, r, h].x > 0.5:
-    #                print("Robot ", r + 1, " will serve client ", c + 1, " from Hub ", h + 1)
+    print("Analyzing Solutions...")
+    print("1. Robots:")
+    robots = {r: [] for r in R}
+    active_robots = []
+    for r in R:
+        robot = ""
+        hub = ""
+        clients_served = []
+        clients_served_real = []
+        for h in H:
+            for c in C:
+                if x[c, r, h].X > 0.5:
+                    robot = str(r+1)
+                    hub = str(h+1)
+                    clients_served.append(int(c)+1)
+                    clients_served_real.append(int(c))
+        if robot:
+            print("Robot {}, will be serving from hub {}.".format(robot,hub))
+            print("The robot will serve the following clients: {}".format(clients_served))
+            active_robots.append(r)
+        if hub:
+            clients_served_real.append(n_c+int(hub)-1)
+        robots[r] = clients_served_real
+
+    # Robot tours:
+    print("2. Robot tours:")
+    tours = {r : [] for r in R}
+    for r in R:
+        links = list()
+        for i in L:
+            for j in L:
+                if y[i, j, r].X > 0.5:
+                    links.append((i,j))
+        tours[r] = links
+    print("Links visited by each robot: ")
+    print(tours)
+
+    #####################################################
+    # 7. printing tours
+    #####################################################
+
+    import matplotlib.pyplot as plt
+    import networkx as nx
+
+    G = nx.DiGraph()
+    list_nodes = list(range(1, len(L)))  # list(range(1, len(L) + 1))
+    G.add_nodes_from(list_nodes)
+
+    #for j in L:
+    #    for i in L:
+    #        if i != j:
+    #            G.add_edge(i, j)
+
+    nodes_clients = {int(c.name): c.loc for c in clients}
+    nodes_hubs = {n_c + h : hubs[h] for h in H}
+    node_pos = {**nodes_clients, **nodes_hubs}
+
+    # Create a list of nodes in shortest path
+    for r in active_robots:
+        # Create a list of edges in shortest path
+        red_edges = [(i, j) for i in L for j in L if y[i, j, r].x > 0.5]
+        for i in L:
+            for j in L:
+                if y[i, j, r].x > 0.5:
+                    G.add_edge(i, j)
+        # If the node is in the shortest path, set it to red, else set it to white color
+        node_col = ['white' if not node in robots[r] else 'red' for node in G.nodes()]
+        # If the edge is in the shortest path set it to red, else set it to white color
+        edge_col = ['black' if not edge in red_edges else 'red' for edge in G.edges()]
+        # Draw the nodes
+        nx.draw_networkx(G, node_pos, node_color=node_col, node_size=450)
+        # Draw the node labels
+        # nx.draw_networkx_labels(G1, node_pos,node_color= node_col)
+        # Draw the edges
+        nx.draw_networkx_edges(G, node_pos, edge_color=edge_col)
+        # Draw the edge labels
+        #cost_matrix_2_to_int = cost_matrix_2
+        #for sub in cost_matrix_2_to_int:
+        #    cost_matrix_2_to_int[sub] = int(cost_matrix_2_to_int[sub])
+        #nx.draw_networkx_edge_labels(G, node_pos, edge_color=edge_col, edge_labels=cost_matrix_2_to_int)
+        # Remove the axis
+        plt.axis('off')
+        # TODO: Add description of the plot
+
+        # Remove edges
+        G.remove_edges_from(list(G.edges()))
+
+        # Show the plot
+        # plt.show()
+
+        # Save the plot
+        plt.savefig("../output/plots/tour-robot_Ca1-3-30_{}.png".format(r + 1))
+        plt.clf()
+
 
 def create_model_TRP(depot, hubs, cost_matrix_1):
     """

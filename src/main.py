@@ -6,11 +6,14 @@ Group 2 - Hub based model
 
 #from src.LP.solver import model_2 as md
 #from src.LP.solver import model_3 as md
-from src.LP.solver import model_4 as md
+#from src.LP.solver import model_4 as md
+from src.LP.solver import model_5 as md
 from src.LP.utils import data_reader as dt
 
 # remember the path should be relative to the data reader
-path = "../../instances/LV-SAV-instances/3-15/Ca1-3,15.txt"
+#path = "../../instances/LV-SAV-instances/3-15/Ca1-3,15.txt"
+#path = "../../instances/LV-SAV-instances/3-15/Ca2-3,15.txt"
+path = "../../instances/LV-SAV-instances/3-30/Ca1-3,30.txt"
 # 1. convert instance into dataframe
 data = dt.read_d_pandas(path)
 # this is the instance in a dataframe format - with the data we need: location, demand
