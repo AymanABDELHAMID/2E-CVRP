@@ -173,7 +173,7 @@ def create_model(hubs, clients, cost_matrix_1, cost_matrix_2):
     # 2nd part - Truck assignment
     #########################################################
     # defining the number of trucks by calculating the total demand
-    V_cap = 300  # Truck Max Capacity
+    V_cap = 100  # Truck Max Capacity
 
     total_demand = math.fsum(c.demand for c in clients)
     t = math.ceil((total_demand / V_cap))
@@ -203,18 +203,18 @@ def create_model(hubs, clients, cost_matrix_1, cost_matrix_2):
                       for h2 in DH), name="trucks3")
 
     # Eliminating Subtours
-    model.addConstrs((gp.quicksum(z[v, dh1, dh2] for v in V for dh1 in DH[:-1] if dh1 != dh2)
-                      <= 1 for dh2 in DH), name="no_subtours_1")
-    model.addConstrs((gp.quicksum(z[v, dh2, dh1] for v in V for dh1 in DH[:-1] if dh1 != dh2)
-                      <= 1 for dh2 in DH), name="no_subtours_2")
-    model.addConstrs((z[v, dh2, dh1] + z[v, dh1, dh2] <= 1
-                      for v in V for dh1 in DH for dh2 in DH if dh1 != dh2), name="no_subtours_3")
+    #model.addConstrs((gp.quicksum(z[v, dh1, dh2] for v in V for dh1 in DH[:-1] if dh1 != dh2)
+    #                  <= 1 for dh2 in DH), name="no_subtours_1")
+    #model.addConstrs((gp.quicksum(z[v, dh2, dh1] for v in V for dh1 in DH[:-1] if dh1 != dh2)
+    #                  <= 1 for dh2 in DH), name="no_subtours_2")
+    #model.addConstrs((z[v, dh2, dh1] + z[v, dh1, dh2] <= 1
+    #                  for v in V for dh1 in DH for dh2 in DH if dh1 != dh2), name="no_subtours_3")
 
     # Demand per Hub
     D_h = model.addVars(H, ub=total_demand,name="D_h")
     model.addConstrs((D_h[h] == gp.quicksum(D_c[int(c)]*x[c, r, h] for c in C for r in R) for h in H), name="total_demand_per_hub")
     # Maximum Truck Capacity
-    model.addConstrs((gp.quicksum(D_h[h]*z[v, i, h] for i in DH) <= V_cap*w[v]  for h in H for v in V),
+    model.addConstrs((gp.quicksum(D_h[h]*z[v, i, h] for i in DH for h in H) <= V_cap*w[v] for v in V),
                         name="truck_capacity")
 
     # Miller-Tucker-Zemlin formulation (Bektas version):

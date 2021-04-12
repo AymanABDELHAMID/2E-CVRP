@@ -11,8 +11,8 @@ from src.LP.solver import model_6 as md
 from src.LP.utils import data_reader as dt
 
 # remember the path should be relative to the data reader
-#path = "../../instances/LV-SAV-instances/3-15/Ca1-3,15.txt"
-path = "../../instances/LV-SAV-instances/3-15/Ca3-3,15.txt"
+path = "../../instances/LV-SAV-instances/3-15/Ca1-3,15.txt"
+#path = "../../instances/LV-SAV-instances/3-15/Ca3-3,15.txt"
 #path = "../../instances/LV-SAV-instances/3-30/Ca1-3,30.txt"
 # 1. convert instance into dataframe
 data = dt.read_d_pandas(path)
