@@ -579,7 +579,7 @@ def create_model_3(depot, hubs, clients,
     #####################################################
     # 5. Saving LP model (remember to change versions)
     #####################################################
-    model.write("../output/lp_model/2EVRP_v2.lp")
+    model.write("../output/lp_model/2EVRP_v2_truck.lp")
 
     #### Optimize!
     model.optimize()

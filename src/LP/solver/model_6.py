@@ -46,7 +46,7 @@ def create_model(hubs, clients, cost_matrix_1, cost_matrix_2):
     #####################################################
     # a. define maximum number of robots:
     n_c = len(clients)  # number of customers
-    R_max = len(clients) - 20 #TODO: The number of solutions (for Instance 1 - robots needed: 5)
+    R_max = len(clients) -10 #TODO: The number of solutions (for Instance 1 - robots needed: 5)
     R = list(range(R_max))  # list of robots
     C = [c.name for c in clients]  # list of clients
     D_c = [c.demand for c in clients]  # list of demands
@@ -58,7 +58,7 @@ def create_model(hubs, clients, cost_matrix_1, cost_matrix_2):
     Loc_c_dict = {c.name: c.loc for c in clients}  # dict of locations - will not be used most probably
     L = list(set([l[0] for l in cost_matrix_2.keys()]))  # L = m+n
     H = list(range(len(hubs)))  # list of hubs (hubs 0,1,2)
-    R_cap = 100  # maximum robot capacity
+    R_cap = 50  # maximum robot capacity
     R_dist = 200
     # fixed costs
     c_hub = 50
@@ -147,6 +147,28 @@ def create_model(hubs, clients, cost_matrix_1, cost_matrix_2):
     # Robot serves from one hub only
     model.addConstrs((gp.quicksum(rob[r, h] for h in H) <= 1 for r in R), name="one_hub_per_robot")
 
+    ########################################################
+    # Subtour Elimination
+    ########################################################
+    # Miller-Tucker-Zemlin formulation (Bektas version):
+    # How to define p?? The maximum number of clients a robot can visit, or the maximum number of hub a truck can visit
+    # 1 <= u[.] <= p+1
+    # p1 =  len(L)
+    # u1 = model.addVars(L, H, vtype=GRB.INTEGER, ub=p1 + 1, lb=1, name="u")
+
+    # (4) - respecting the tour order
+    # model.addConstrs(((u1[i,h] - u1[j,h] + p1 * (gp.quicksum(y[i, j, r] for r in R))) <= p1 - 1
+    #                  for i in range(0, p1) for j in range(0, p1)  for h in H if i != j),
+    #                 name="respect_order_clients")  # DH should be replaced by the sum of the open hubs
+
+    p1 =  n_c
+    u1 = model.addVars(L, vtype=GRB.INTEGER, ub=p1 + 1, lb=1, name="u")
+
+    # (4) - respecting the tour order
+    model.addConstrs(((u1[i] - u1[j] + p1 * (gp.quicksum(y[i, j, r] for r in R))) <= p1 - 1
+                      for i in range(0, p1) for j in range(0, p1) if i != j),
+                     name="respect_order_clients")  # DH should be replaced by the sum of the open hubs
+
     #########################################################
     # 2nd part - Truck assignment
     #########################################################
@@ -165,6 +187,7 @@ def create_model(hubs, clients, cost_matrix_1, cost_matrix_2):
 
     # Truck hub assignment
     w = model.addVars(V, vtype=GRB.BINARY, name="w")
+
 
 
     # (8) - all the trucks must return to the depot station
@@ -193,6 +216,26 @@ def create_model(hubs, clients, cost_matrix_1, cost_matrix_2):
     # Maximum Truck Capacity
     model.addConstrs((gp.quicksum(D_h[h]*z[v, i, h] for i in DH) <= V_cap*w[v]  for h in H for v in V),
                         name="truck_capacity")
+
+    # Miller-Tucker-Zemlin formulation (Bektas version):
+    # How to define p?? The maximum number of clients a robot can visit, or the maximum number of hub a truck can visit
+    # 1 <= u[.] <= p+1
+    p = len(DH) #n_c
+    u = model.addVars(DH, vtype=GRB.INTEGER, ub=p + 1, lb=1, name="u")
+
+    # (u1) - setting the starting point from main Depot
+    model.addConstr((u[len(hubs)] == 1), name="start_from_depot")  # when changed to 1 the model is infeasible
+
+    # (u2-3) - order of satellites should be between 2 and p+1
+    model.addConstrs((u[h] >= 2 for h in DH[:-1]), name="lowest_hub_order")
+    model.addConstrs((u[h] <= p + 1 for h in DH[:-1]), name="highest_hub_order_2")
+    # (4) - respecting the tour order
+    model.addConstrs(((u[h1] - u[h2] + p*(gp.quicksum(z[v, h1, h2] for v in V))) <= p - 1
+                      for h1 in range(0, p-1) for h2 in range(0, p-1) if h1 != h2),
+                        name="respect_order")  # DH should be replaced by the sum of the open hubs
+
+    # (16) - if the hub is closed then u should be zero
+    #model.addConstrs((u[h] <= (p + 1) * o[h - 1] for h in DH[1:]), name="no_hub_no_u")
 
     #####################################################
     # 4. Objective function
@@ -224,7 +267,7 @@ def create_model(hubs, clients, cost_matrix_1, cost_matrix_2):
     #####################################################
     # 5. Saving LP model (remember to change versions)
     #####################################################
-    model.write("../output/lp_model/RAP_TRP_model5_v1.lp")
+    model.write("../output/lp_model/RAP_TRP_model6_v2.lp")
 
     #### Optimize!
     model.optimize()
@@ -333,7 +376,7 @@ def create_model(hubs, clients, cost_matrix_1, cost_matrix_2):
         #plt.savefig("../output/plots/scenario2_robot_capacity/Model_5_tour-robot_Ca2-3-15_{}.png".format(r + 1))
         #plt.savefig("../output/plots/scenario3_satellite_cost_robot_distance/Model_5_tour-robot_Ca2-3-15_{}.png".format(r + 1))
         #plt.savefig("../output/plots/normal_scenario/Model_5_tour-robot_Ca2-3-15_{}.png".format(r + 1))
-        plt.savefig("../output/plots/30customers_scenario2/Model_5_tour-robot_Ca2-3-15_{}.png".format(r + 1))
+        plt.savefig("../output/plots/30customers_scenario2/Model_6_tour-robot_Ca3-3-15_{}.png".format(r + 1))
         plt.clf()
 
 
