@@ -1,0 +1,24 @@
+Optimal solution found with total cost: 628.209
+
+Executed in 1.9316333333651226 Minutes
+
+w[0] 1
+D_h[1] 240
+
+Analyzing Solutions...
+1. Robots:
+Robot 1, will be serving from hub 2.
+The robot will serve the following clients: [1, 4, 11, 14, 15]
+Robot 2, will be serving from hub 2.
+The robot will serve the following clients: [3, 7, 9, 12]
+Robot 3, will be serving from hub 2.
+The robot will serve the following clients: [5, 8, 10]
+Robot 5, will be serving from hub 2.
+The robot will serve the following clients: [2, 6, 13]
+2. Robot tours:
+Links visited by each robot: 
+{0: [(0, 13), (3, 16), (10, 14), (13, 10), (14, 3), (16, 0)], 
+1: [(2, 16), (6, 8), (8, 2), (11, 6), (16, 11)], 
+2: [(4, 9), (7, 16), (9, 7), (16, 4)], 3: [], 
+4: [(1, 5), (5, 16), (12, 1), (16, 12)]}
+

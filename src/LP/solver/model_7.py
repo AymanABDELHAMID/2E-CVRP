@@ -1,5 +1,5 @@
 """
-Trying a different approach
+Trying a different approach - adding termination criteria
 28 - 03 - 2021
 """
 
@@ -13,15 +13,30 @@ import csv
 import sys
 import math
 
-def create_model_FLP(hubs, clients, cost_matrix_2):
-    """
-    Model to minimize the number of hubs to open following the classical facility location problem.
-    Maybe we will not need this part
-    :param hubs:
-    :param clients:
-    :param cost_matrix_2:
-    :return: hub that are open.
-    """
+
+
+# Custom termination criterion: Quit optimization
+# - after  5s if a high quality (4% gap) solution has been found, or
+# - after 20min if a feasible solution has been found.
+
+def mycallback(model, where):
+    if where == GRB.Callback.MIP:
+        time = model.cbGet(GRB.Callback.RUNTIME)
+        best = model.cbGet(GRB.Callback.MIP_OBJBST)
+        bound = model.cbGet(GRB.Callback.MIP_OBJBND)
+
+        if best < GRB.INFINITY:
+            # We have a feasible solution
+            if time > 5 and abs(bound - best) < 0.04 * abs(bound):
+                model.terminate()
+
+            if time > 1200:
+                model.terminate()
+
+# custom optimize() function that uses callback
+
+def myopt(model):
+    model.optimize(mycallback)
 
 def create_model(hubs, clients, cost_matrix_1, cost_matrix_2):
     """
@@ -46,25 +61,19 @@ def create_model(hubs, clients, cost_matrix_1, cost_matrix_2):
     #####################################################
     # a. define maximum number of robots:
     n_c = len(clients)  # number of customers
-    R_max = len(clients) - 25 #TODO: The number of solutions (for Instance 1 - robots needed: 5)
+    R_max = len(clients) - 10 #TODO: The number of solutions (for Instance 1 - robots needed: 5)
     R = list(range(R_max))  # list of robots
     C = [c.name for c in clients]  # list of clients
     D_c = [c.demand for c in clients]  # list of demands
-    # time windows and duration:
-    st = {c.name: c.st for c in clients}
-    t1 = {c.name: c.tw1 for c in clients}
-    t2 = {c.name: c.tw2 for c in clients}
     Loc_c = [c.loc for c in clients]  # list of locations
     Loc_c_dict = {c.name: c.loc for c in clients}  # dict of locations - will not be used most probably
     L = list(set([l[0] for l in cost_matrix_2.keys()]))  # L = m+n
     H = list(range(len(hubs)))  # list of hubs (hubs 0,1,2)
-    R_cap = 100  # maximum robot capacity
-    R_dist = 400
+    R_cap = 50  # maximum robot capacity
+    R_dist = 200
     # fixed costs
     c_hub = 50
     c_robot = 10
-    # set upper bound to the last operation last time window
-    op_time = max(t2.values()) + 15
 
     #####################################################
     # 2. decision variables
@@ -78,96 +87,63 @@ def create_model(hubs, clients, cost_matrix_1, cost_matrix_2):
     # edges assignment to robots
     y = model.addVars(L, L, R, vtype=GRB.BINARY, name="y")
 
-    # Start time of service
-    # TODO: Get the maximum latest time window
-    t = model.addVars(L, ub=op_time, name="t") # for instance 1, the maximum time is 263
-
-    # Artificial variables to correct time window upper and lower limits
-    xa = model.addVars(C, name="xa")
-    xb = model.addVars(C, name="xb")
-
     #####################################################
     # 3. constraints
     #####################################################
 
-    # A robot must be assigned to a client
+    # 1. A robot must be assigned to a client
     model.addConstrs((gp.quicksum(x[c, r, h] for r in R for h in H) == 1 for c in C), name="client_must_be_served")
-    # (4) - if robot serves a client, the corresponding hub must be open
+    # 2. if robot serves a client, the corresponding hub must be open
     model.addConstrs((gp.quicksum(x[c, r, h] for r in R) <= o[h] for c in C for h in H),
                      name="no_hub_no_robot")
+    # 3. if robot serves a client, the corresponding rob decision variable must be 1
     model.addConstrs((rob[r, h] <= o[h] for r in R for h in H), name="no_hub_no_robot_2")
-    # [2] - At most one robot can be assigned to a job
+
+    # 4. At most one robot can be assigned to a job
     model.addConstrs((x.sum(c, '*', h) <= 1 for c in C for h in H), name="one_robot")
-    # Robot serves from a single hub:
-    # (D) - each client is served by a single robot from a single hub
-    # model.addConstrs((gp.quicksum(x[c, r, h] for h in H for r in R) == 1 for c in C), name="Just_one_hub")
-    # (C) - Robot maximum capacity constraint
+
+    # 5. Robot maximum capacity constraint
     model.addConstrs((gp.quicksum(D_c[int(c)] * x[c, r, h] for c in C for h in H) <= R_cap * rob.sum(r, '*') for r in R),
                      name="robot_cap")
-    # (A) - distance covered by every robot should be less than maximum allowed distance
+    # 6. Distance covered by every robot should be less than maximum allowed distance
     model.addConstrs((gp.quicksum(cost_matrix_2[i, j] * y[i, j, r] for i in L for j in L if i != j)
                       <= R_dist for r in R), name="robot_dist")
     # Robot tour constraints
+    # 7. a.	For each robot and client, we need to ensure that the
+    # robot travels to another location after serving the client.
     model.addConstrs((gp.quicksum(y[int(j), int(i), r] for j in L if int(j) != int(i))
                       == gp.quicksum(x[i, r, h] for h in H) for r in R for i in C),
                         name="Tour1")
     model.addConstrs((gp.quicksum(y[int(i), int(j), r] for j in L if int(j) != int(i)) == gp.quicksum(x[i, r, h] for h in H) for r in R for i in C),
                  name="Tour2")
-    # Additional Tour Constraints:
-    model.addConstrs((y[int(j), int(i), r] + y[int(i), int(j), r] <= 1 for r in R
-                      for i in L for j in L if int(j) != int(i)), name="Tour3")
 
-    # Ensuring Tours in "y" are respecting the same hub the robot is serving from
+    # 7. b. Ensuring Tours in "y" are respecting the same hub the robot is serving from
     model.addConstrs((gp.quicksum(y[int(c), n_c + h, r] for c in C) == rob[r, h] for r in R for h in H),
                  name="sameHub1_y")
     model.addConstrs((gp.quicksum(y[n_c + h, int(c), r] for c in C) == rob[r, h] for r in R for h in H),
      name="sameHub2_y")
 
-    # Ensuring robot assignment in "x" are respecting the same hub the robot is serving from
-    model.addConstrs((gp.quicksum(x[c, r, h] for c in C) <= (n_c+1)*(rob[r, h]) for r in R for h in H),
+    # 7. c. Additional Tour Constraints (not needed):
+    model.addConstrs((y[int(j), int(i), r] + y[int(i), int(j), r] <= 1 for r in R
+                      for i in L for j in L if int(j) != int(i)), name="Tour3")
+
+    # 8. Ensuring robot assignment in "x" are respecting the same hub the robot is serving from
+    model.addConstrs((gp.quicksum(x[c, r, h] for c in C) <= (n_c + 1) * (rob[r, h]) for r in R for h in H),
                      name="sameHub_x")
-    #model.addConstrs((gp.quicksum(x[c, r, h] for c in C) <= (n_c+1)*(rob[r, h]) for r in R for h in H),
-    #                 name="sameHub2_x")
 
-    # Temporal constraints for client locations (here we assume distance and time have 2:1 ratio)
-    #M = {(i, j): op_time + st[i] + (cost_matrix_2[int(i), int(j)]/2) for i in C for j in C}
-    #model.addConstrs((t[int(j)] >= t[int(i)] + st[i] + (cost_matrix_2[int(i), int(j)]/2)
-    #              - M[i, j] * (1 - gp.quicksum(y[int(i), int(j), r] for r in R))
-    #              for i in C for j in C), name="tempoClients")
-
-    # Temporal constraints for hub locations
-    #M = {(i, j): op_time + (cost_matrix_2[int(i), int(j)]/2) for i in H for j in C}
-    #model.addConstrs((t[int(j)] >= t[int(i)] + (cost_matrix_2[int(i), int(j)]/2)
-    #              - M[i, j] * (1 - gp.quicksum(y[int(i), int(j), r] for r in R)) for i in H for j in C),
-    #             name="tempoHub")
-    # Time window constraints
-    #model.addConstrs((t[int(c)] + xa[c] >= t1[c] for c in C), name="timeWin1")
-    #model.addConstrs((t[int(c)] - xb[c] <= t2[c] for c in C), name="timeWin2")
-
-    # Robot serves from one hub only
+    # 9. Robot serves from one hub only
     model.addConstrs((gp.quicksum(rob[r, h] for h in H) <= 1 for r in R), name="one_hub_per_robot")
-
-    # Testing
-    # model.addConstr((gp.quicksum(o[h] for h in H) == 3), name="all_hubs_open")
 
     ########################################################
     # Subtour Elimination
     ########################################################
     # Miller-Tucker-Zemlin formulation (Bektas version):
     # How to define p?? The maximum number of clients a robot can visit, or the maximum number of hub a truck can visit
-    # 1 <= u[.] <= p+1
-    # p1 =  len(L)
-    # u1 = model.addVars(L, H, vtype=GRB.INTEGER, ub=p1 + 1, lb=1, name="u")
-
-    # (4) - respecting the tour order
-    # model.addConstrs(((u1[i,h] - u1[j,h] + p1 * (gp.quicksum(y[i, j, r] for r in R))) <= p1 - 1
-    #                  for i in range(0, p1) for j in range(0, p1)  for h in H if i != j),
-    #                 name="respect_order_clients")  # DH should be replaced by the sum of the open hubs
 
     p1 =  n_c
     u1 = model.addVars(L, vtype=GRB.INTEGER, ub=p1 + 1, lb=1, name="u")
 
-    # (4) - respecting the tour order
+    # 10. respecting the tour order
     model.addConstrs(((u1[i] - u1[j] + p1 * (gp.quicksum(y[i, j, r] for r in R))) <= p1 - 1
                       for i in range(0, p1) for j in range(0, p1) if i != j),
                      name="respect_order_clients")  # DH should be replaced by the sum of the open hubs
@@ -193,63 +169,44 @@ def create_model(hubs, clients, cost_matrix_1, cost_matrix_2):
 
 
 
-    # (8) - all the trucks must return to the depot station
+    # 11. all the trucks must return to the depot station
     model.addConstrs((gp.quicksum(z[v, len(hubs), h] for h in DH[:-1]) == w[v] for v in V), name="trucks1")
-    # (9) - all trucks must depart from the depart station
+    # 12. all trucks must depart from the depart station
     model.addConstrs((gp.quicksum(z[v, h, len(hubs)] for h in DH[:-1]) == w[v] for v in V), name="trucks2")
-    # (11) - sum of all trucks going to the same hub is 1 if hub is open
+    # 13. sum of all trucks going to the same hub is 1 if hub is open
     model.addConstrs((gp.quicksum(z[v, h1, h2] for v in V for h1 in DH if h1 != h2)
                       == o[h2] for h2 in DH[:-1]), name="if_truck_then_hub")
-    # (11new) - Modified to have more than one truck visiting the hub.
-    #model.addConstrs((gp.quicksum(z[v, h1, h2] for v in V for h1 in DH if h1 != h2)
-    #                  >= o[h2] for h2 in DH[:-1]), name="if_truck_then_hub")
-    # (10) - mirroring Constraint 11
+    # 14. mirroring Constraint 11
     model.addConstrs((gp.quicksum(z[v, h1, h2] for v in V for h1 in DH if h1 != h2)
                       == gp.quicksum(z[v, h2, h1] for v in V for h1 in DH if h1 != h2)
                       for h2 in DH), name="trucks3")
 
-    # Truck tour constraints
-    #model.addConstrs((gp.quicksum(z[v, j, h] for j in DH for v in V if j != h)
-     #                 >= o[h] for h in H),
-     #                name="Tour1_truck")
-    #model.addConstrs((gp.quicksum(z[v, h, j] for j in DH for v in V if j != h)
-    #                  >= o[h] for h in H),
-    #                 name="Tour2_truck")
+    # Truck tour constraints (same as 13, 14)
+    model.addConstrs((gp.quicksum(z[v, j, h] for j in DH for v in V if j != h)
+                      == o[h] for h in H),
+                     name="Tour1_truck")
+    model.addConstrs((gp.quicksum(z[v, h, j] for j in DH for v in V if j != h)
+                      == o[h] for h in H),
+                     name="Tour2_truck")
 
-    # Eliminating Subtours
-    #model.addConstrs((gp.quicksum(z[v, dh1, dh2] for v in V for dh1 in DH[:-1] if dh1 != dh2)
-    #                  <= 1 for dh2 in DH), name="no_subtours_1")
-    #model.addConstrs((gp.quicksum(z[v, dh2, dh1] for v in V for dh1 in DH[:-1] if dh1 != dh2)
-    #                  <= 1 for dh2 in DH), name="no_subtours_2")
-    #model.addConstrs((z[v, dh2, dh1] + z[v, dh1, dh2] <= 1
-    #                  for v in V for dh1 in DH for dh2 in DH if dh1 != dh2), name="no_subtours_3")
-
-    # Demand per Hub
+    # 16. Demand per Hub
     D_h = model.addVars(H, ub=total_demand,name="D_h")
+
+    # 17. Demand per hub
     model.addConstrs((D_h[h] == gp.quicksum(D_c[int(c)]*x[c, r, h] for c in C for r in R) for h in H), name="total_demand_per_hub")
-    # Maximum Truck Capacity
+    # 18. Maximum Truck Capacity
     model.addConstrs((gp.quicksum(D_h[h]*z[v, i, h] for i in DH for h in H) <= V_cap*w[v] for v in V),
                         name="truck_capacity")
 
-    # Miller-Tucker-Zemlin formulation (Bektas 2006 version):
-    # How to define p?? The maximum number of clients a robot can visit, or the maximum number of hub a truck can visit
+    # 19. Miller-Tucker-Zemlin formulation (Bektas 2006 version):
     # 1 <= u[.] <= p+1
-    p = len(DH) #n_c
+    p = len(H) #len(DH) #n_c
     u2 = model.addVars(DH, vtype=GRB.INTEGER, ub=p + 1, lb=1, name="u2")
 
-    # (u1) - setting the starting point from main Depot
-    model.addConstr((u2[len(hubs)] == 1), name="start_from_depot")
-
-    # (u2-3) - order of satellites should be between 2 and p+1
-    model.addConstrs((u2[h] >= 2 for h in DH[:-1]), name="lowest_hub_order")
-    model.addConstrs((u2[h] <= p + 1 for h in DH[:-1]), name="highest_hub_order_2")
-    # (4) - respecting the tour order
+    # respecting the tour order
     model.addConstrs(((u2[h1] - u2[h2] + p*(gp.quicksum(z[v, h1, h2] for v in V))) <= p - 1
-                      for h1 in range(0, p-1) for h2 in range(0, p-1) if h1 != h2),
+                      for h1 in range(0, p) for h2 in range(0, p) if h1 != h2),
                         name="respect_order")  # DH should be replaced by the sum of the open hubs
-
-    # (16) - if the hub is closed then u should be zero
-    #model.addConstrs((u[h] <= (p + 1) * o[h - 1] for h in DH[1:]), name="no_hub_no_u")
 
     #####################################################
     # 4. Objective function
@@ -284,7 +241,8 @@ def create_model(hubs, clients, cost_matrix_1, cost_matrix_2):
     model.write("../output/lp_model/RAP_TRP_model6_v2.lp")
 
     #### Optimize!
-    model.optimize()
+    #model.optimize()
+    myopt(model)
 
     #####################################################
     # 6. analyzing solutions
@@ -390,17 +348,8 @@ def create_model(hubs, clients, cost_matrix_1, cost_matrix_2):
         #plt.savefig("../output/plots/scenario2_robot_capacity/Model_5_tour-robot_Ca2-3-15_{}.png".format(r + 1))
         #plt.savefig("../output/plots/scenario3_satellite_cost_robot_distance/Model_5_tour-robot_Ca2-3-15_{}.png".format(r + 1))
         #plt.savefig("../output/plots/normal_scenario/Model_5_tour-robot_Ca2-3-15_{}.png".format(r + 1))
-        plt.savefig("../output/plots/Ca1-3,30/Model_6_tour-robot_Ca1-3,30_robot_{}.png".format(r + 1))
+        plt.savefig("../output/plots/Instances/Cd1-3,15/Model_7_tour_robot_{}.png".format(r + 1))
+        #plt.savefig("../output/plots/Model_7_tour_robot_{}.png".format(r + 1))
         plt.clf()
 
 
-def create_model_TRP(depot, hubs, cost_matrix_1):
-    """
-    Model tp optimize truck routing from central depot to hubs rspecting:
-        1. Hubs demands
-        2. Truck maximum capacity
-    :param depot:
-    :param hubs:
-    :param cost_matrix_1:
-    :return:
-    """
